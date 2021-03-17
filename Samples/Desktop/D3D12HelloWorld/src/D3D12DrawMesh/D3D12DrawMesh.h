@@ -35,11 +35,15 @@ public:
 private:
     static const UINT FrameCount = 2;
 
-    struct Vertex
-    {
-        XMFLOAT3 position;
-        XMFLOAT4 color;
-    };
+	//单个物体的常量数据
+	struct ConstantsBuffer
+	{
+		//初始化物体空间变换到裁剪空间矩阵，Identity4x4()是单位矩阵，需要包含MathHelper头文件
+		XMFLOAT4X4 worldViewProj;
+		XMFLOAT4X4 worldViewProj1;
+		XMFLOAT4X4 worldViewProj2;
+		XMFLOAT4X4 worldViewProj3;
+	};
 
     // Pipeline objects.
     CD3DX12_VIEWPORT m_viewport;
@@ -50,16 +54,21 @@ private:
     ComPtr<ID3D12CommandAllocator> m_commandAllocator;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     ComPtr<ID3D12RootSignature> m_rootSignature;
-    ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+	ComPtr<ID3D12DescriptorHeap> m_cbSrvHeap;
+	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     UINT m_rtvDescriptorSize;
+	UINT m_cbSrvDescriptorSize;
 
     // App resources.
     ComPtr<ID3D12Resource> m_vertexBuffer;
 	ComPtr<ID3D12Resource> m_indexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    ComPtr<ID3D12Resource> m_constantBuffer;
+	ConstantsBuffer m_constantBufferData;
+	UINT8* m_pCbSrvDataBegin;
 
     // Synchronization objects.
     UINT m_frameIndex;
