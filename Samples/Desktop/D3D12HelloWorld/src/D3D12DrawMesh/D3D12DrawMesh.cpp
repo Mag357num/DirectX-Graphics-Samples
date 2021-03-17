@@ -140,6 +140,10 @@ void D3D12DrawMesh::LoadPipeline()
 // Load the sample assets.
 void D3D12DrawMesh::LoadAssets()
 {
+	ComPtr<ID3D12Resource> vertexBufferUploadHeap;
+	ComPtr<ID3D12Resource> indexBufferUploadHeap;
+	ComPtr<ID3D12Resource> textureUploadHeap;
+
 	// Create an empty root signature.
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -198,6 +202,22 @@ void D3D12DrawMesh::LoadAssets()
 	// to record yet. The main loop expects it to be closed, so close it now.
 	ThrowIfFailed(m_commandList->Close());
 
+	UINT meshDataLength = sizeof(float) * 52 * 7;
+
+	//method1:
+	//float verBufUnorder[162];
+	//float colBufUnorder[216];
+	//int indBufUnorder[144];
+	//fin.read((char*)&verBufUnorder, sizeof(float) * 162); // xyz
+	//fin.read((char*)&colBufUnorder, sizeof(int) * 216);
+	//fin.read((char*)&indBufUnorder, sizeof(int) * 144);
+
+	//method2:
+	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
+	float pMeshData[522];
+	fin.read((char*)&pMeshData, sizeof(float) * 522);
+	fin.close();
+
 	// Create the vertex buffer.
 	{
 		// Define the geometry for a triangle.
@@ -208,25 +228,8 @@ void D3D12DrawMesh::LoadAssets()
 			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
 		};
 
-		std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
-		//int numVertice;
-		//int numIndices;
-		//fin.read((char*)&numVertice, sizeof(int));
-		//fin.read((char*)&numIndices, sizeof(int));
-
-		//float verBufUnorder[162];
-		//int indBufUnorder[144];
-		//fin.read((char*)&verBufUnorder, sizeof(float) * 162); // xyz
-		//fin.read((char*)&indBufUnorder, sizeof(int) * 144);
-
-		//method2:
-		//UINT8* pMeshData;
-		//UINT meshDataLength = sizeof(float) * 162;
-		//fin.read((char*)&pMeshData, sizeof(float) * 522);
-		fin.close();
-
-
 		const UINT vertexBufferSize = sizeof(triangleVertices);
+		const UINT vertexBufferSize2 = sizeof(float) * 54 * 7;
 
 		// Note: using upload heaps to transfer static data like vert buffers is not 
 		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
@@ -240,6 +243,17 @@ void D3D12DrawMesh::LoadAssets()
 			nullptr,
 			IID_PPV_ARGS(&m_vertexBuffer)));
 
+		ThrowIfFailed(m_device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // update heap
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize2),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&vertexBufferUploadHeap)));
+
+		NAME_D3D12_OBJECT(m_vertexBuffer);
+
+
 		// Copy the triangle data to the vertex buffer.
 		UINT8* pVertexDataBegin;
 		CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
@@ -250,7 +264,7 @@ void D3D12DrawMesh::LoadAssets()
 		// Initialize the vertex buffer view.
 		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-		m_vertexBufferView.SizeInBytes = vertexBufferSize;
+		m_vertexBufferView.SizeInBytes = vertexBufferSize2;
 	}
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
