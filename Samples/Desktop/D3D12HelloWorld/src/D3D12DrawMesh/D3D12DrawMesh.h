@@ -12,6 +12,9 @@
 #pragma once
 
 #include "DXSample.h"
+#include "DirectXMath.h"
+#include "SimpleCamera.h"
+#include "StepTimer.h"
 
 using namespace DirectX;
 
@@ -37,8 +40,8 @@ private:
 
 	struct SceneConstantBuffer
 	{
-		XMFLOAT4 offset;
-		float padding[60]; // Padding so the constant buffer is 256-byte aligned.
+        XMMATRIX worldViewProj = DirectX::XMMatrixIdentity();
+		float padding[48]; // Padding so the constant buffer is 256-byte aligned.
 	};
 	static_assert((sizeof(SceneConstantBuffer) % 256) == 0, "Constant Buffer size must be 256-byte aligned");
 
@@ -51,8 +54,8 @@ private:
     ComPtr<ID3D12CommandAllocator> m_commandAllocator;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     ComPtr<ID3D12RootSignature> m_rootSignature;
-	ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+	ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     UINT m_rtvDescriptorSize;
@@ -66,6 +69,8 @@ private:
     ComPtr<ID3D12Resource> m_constantBuffer;
 	SceneConstantBuffer m_constantBufferData;
 	UINT8* m_pCbvDataBegin;
+	StepTimer m_timer;
+	SimpleCamera m_camera;
 
     // Synchronization objects.
     UINT m_frameIndex;

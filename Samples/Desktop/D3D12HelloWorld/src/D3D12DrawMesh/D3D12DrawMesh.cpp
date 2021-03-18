@@ -11,6 +11,7 @@
 
 #include "stdafx.h"
 #include "D3D12DrawMesh.h"
+#include "SimpleCamera.h"
 #include <fstream>
 
 D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
@@ -26,6 +27,8 @@ D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
 
 void D3D12DrawMesh::OnInit()
 {
+	m_camera.Init({ 8, 8, 30 });
+
 	LoadPipeline();
 	LoadAssets();
 }
@@ -154,36 +157,36 @@ void D3D12DrawMesh::LoadAssets()
 
 	// Create a root signature consisting of a descriptor table with a single CBV.
 	{
-		        D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+				D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
 
-        // This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
-        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		// This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
 
-        if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
-        {
-            featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-        }
+		if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+		{
+			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+		}
 
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-        CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
+		CD3DX12_ROOT_PARAMETER1 rootParameters[1];
 
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-        rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
 
-        // Allow input layout and deny uneccessary access to certain pipeline stages.
-        D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+		// Allow input layout and deny uneccessary access to certain pipeline stages.
+		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
 		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
-        ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
+		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
 		ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 	}
 
@@ -231,9 +234,9 @@ void D3D12DrawMesh::LoadAssets()
 	// Create the command list.
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 
-    // Command lists are created in the recording state, but there is nothing
-    // to record yet. The main loop expects it to be closed, so close it now.
-    ThrowIfFailed(m_commandList->Close());
+	// Command lists are created in the recording state, but there is nothing
+	// to record yet. The main loop expects it to be closed, so close it now.
+	ThrowIfFailed(m_commandList->Close());
 
 	//read binary
 	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
@@ -254,9 +257,9 @@ void D3D12DrawMesh::LoadAssets()
 			IID_PPV_ARGS(&m_vertexBuffer)));
 
 		// Note: using upload heaps to transfer static data like vert buffers is not 
-        // recommended. Every time the GPU needs it, the upload heap will be marshalled 
-        // over. Please read up on Default Heap usage. An upload heap is used here for 
-        // code simplicity and because there are very few verts to actually transfer.
+		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
+		// over. Please read up on Default Heap usage. An upload heap is used here for 
+		// code simplicity and because there are very few verts to actually transfer.
 		ThrowIfFailed(m_device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
@@ -334,7 +337,7 @@ void D3D12DrawMesh::LoadAssets()
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = m_constantBuffer->GetGPUVirtualAddress();
 		cbvDesc.SizeInBytes = constantBufferSize;
-	  	m_device->CreateConstantBufferView(&cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
+		m_device->CreateConstantBufferView(&cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 		// Map and initialize the constant buffer. We don't unmap this until the
 		// app closes. Keeping things mapped for the lifetime of the resource is okay.
@@ -365,15 +368,19 @@ void D3D12DrawMesh::LoadAssets()
 // Update frame-based values.
 void D3D12DrawMesh::OnUpdate()
 {
-    const float translationSpeed = 0.005f;
-    const float offsetBounds = 1.25f;
+	m_timer.Tick(NULL);
 
-    m_constantBufferData.offset.x += translationSpeed;
-    if (m_constantBufferData.offset.x > offsetBounds)
-    {
-        m_constantBufferData.offset.x = -offsetBounds;
-    }
-    memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
+
+	m_camera.Update(static_cast<float>(m_timer.GetElapsedSeconds()));
+
+	XMMATRIX m = XMMatrixTranslation(0.f, 0.f, 0.f);
+	XMMATRIX v = m_camera.GetViewMatrix();
+	XMMATRIX p = m_camera.GetProjectionMatrix(0.8f, m_aspectRatio);
+
+	// Compute the model-view-projection matrix.
+	m_constantBufferData.worldViewProj = XMMatrixTranspose(m * v * p);
+
+	memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
 }
 
 // Render the scene.
@@ -417,10 +424,10 @@ void D3D12DrawMesh::PopulateCommandList()
 	// Set necessary state.
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
 	
-    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
-    m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-    m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+	m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 

@@ -33,6 +33,12 @@
     <ClInclude Include="Win32Application.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleCamera.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="StepTimer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3D12DrawMesh.cpp">
@@ -48,6 +54,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Win32Application.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleCamera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
