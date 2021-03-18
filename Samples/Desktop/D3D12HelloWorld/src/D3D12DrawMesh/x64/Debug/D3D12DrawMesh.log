@@ -1,2 +1,8 @@
 ﻿  D3D12DrawMesh.cpp
+  DXSample.cpp
+  Main.cpp
+  SimpleCamera.cpp
+  stdafx.cpp
+  Win32Application.cpp
+  Generating Code...
   D3D12DrawMesh.vcxproj -> F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\D3D12DrawMesh.exe

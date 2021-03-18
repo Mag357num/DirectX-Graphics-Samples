@@ -40,7 +40,7 @@ private:
 
 	struct SceneConstantBuffer
 	{
-        XMMATRIX worldViewProj = DirectX::XMMatrixIdentity();
+        XMFLOAT4X4 worldViewProj;
 		float padding[48]; // Padding so the constant buffer is 256-byte aligned.
 	};
 	static_assert((sizeof(SceneConstantBuffer) % 256) == 0, "Constant Buffer size must be 256-byte aligned");

@@ -27,7 +27,7 @@ D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
 
 void D3D12DrawMesh::OnInit()
 {
-	m_camera.Init({ 8, 8, 30 });
+	m_camera.Init({ 8, 8, 100 });
 
 	LoadPipeline();
 	LoadAssets();
@@ -234,9 +234,9 @@ void D3D12DrawMesh::LoadAssets()
 	// Create the command list.
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 
-	// Command lists are created in the recording state, but there is nothing
-	// to record yet. The main loop expects it to be closed, so close it now.
-	ThrowIfFailed(m_commandList->Close());
+	//// Command lists are created in the recording state, but there is nothing
+	//// to record yet. The main loop expects it to be closed, so close it now.
+	//ThrowIfFailed(m_commandList->Close());
 
 	//read binary
 	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
@@ -346,6 +346,11 @@ void D3D12DrawMesh::LoadAssets()
 		memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
 	}
 
+	// Close the command list and execute it to begin the initial GPU setup.
+	ThrowIfFailed(m_commandList->Close());
+	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
 	{
 		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
@@ -378,7 +383,7 @@ void D3D12DrawMesh::OnUpdate()
 	XMMATRIX p = m_camera.GetProjectionMatrix(0.8f, m_aspectRatio);
 
 	// Compute the model-view-projection matrix.
-	m_constantBufferData.worldViewProj = XMMatrixTranspose(m * v * p);
+	XMStoreFloat4x4(&m_constantBufferData.worldViewProj, XMMatrixTranspose(m * v * p));
 
 	memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
 }
