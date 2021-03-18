@@ -35,15 +35,12 @@ public:
 private:
     static const UINT FrameCount = 2;
 
-	//单个物体的常量数据
-	struct ConstantsBuffer
+	struct SceneConstantBuffer
 	{
-		//初始化物体空间变换到裁剪空间矩阵，Identity4x4()是单位矩阵，需要包含MathHelper头文件
-		XMFLOAT4X4 worldViewProj;
-		XMFLOAT4X4 worldViewProj1;
-		XMFLOAT4X4 worldViewProj2;
-		XMFLOAT4X4 worldViewProj3;
+		XMFLOAT4 offset;
+		float padding[60]; // Padding so the constant buffer is 256-byte aligned.
 	};
+	static_assert((sizeof(SceneConstantBuffer) % 256) == 0, "Constant Buffer size must be 256-byte aligned");
 
     // Pipeline objects.
     CD3DX12_VIEWPORT m_viewport;
@@ -54,7 +51,7 @@ private:
     ComPtr<ID3D12CommandAllocator> m_commandAllocator;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     ComPtr<ID3D12RootSignature> m_rootSignature;
-	ComPtr<ID3D12DescriptorHeap> m_cbSrvHeap;
+	ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
@@ -67,8 +64,8 @@ private:
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     ComPtr<ID3D12Resource> m_constantBuffer;
-	ConstantsBuffer m_constantBufferData;
-	UINT8* m_pCbSrvDataBegin;
+	SceneConstantBuffer m_constantBufferData;
+	UINT8* m_pCbvDataBegin;
 
     // Synchronization objects.
     UINT m_frameIndex;
