@@ -9,6 +9,12 @@
 //
 //*********************************************************
 
+cbuffer SceneConstantBuffer : register(b0)
+{
+    float4x4 worldViewProj;
+    float4 padding[48];
+};
+
 struct PSInput
 {
     float4 position : SV_POSITION;
@@ -19,7 +25,7 @@ PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 {
     PSInput result;
 
-    result.position = position;
+    result.position = mul(float4(position, 1.0f), worldViewProj);
     result.color = color;
 
     return result;
