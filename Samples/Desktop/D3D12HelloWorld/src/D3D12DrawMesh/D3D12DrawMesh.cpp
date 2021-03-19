@@ -246,15 +246,34 @@ void D3D12DrawMesh::LoadAssets()
 	ThrowIfFailed(m_commandList->Close());
 
 	//read binary
+	UINT8* pVertData;
+	UINT8* pIndtData;
+	int vertexBufferSize;
+	int vertexStride;
+	int indexBufferSize;
 	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
-	float meshDataArray[522];
-	fin.read((char*)meshDataArray, sizeof(float) * 522);
-	fin.close();
-	UINT8* pMeshData = reinterpret_cast<UINT8*>(meshDataArray);
+
+	if (!fin.is_open())
+	{
+		throw std::exception("open file faild.");
+	}
+
+	fin.read((char*)&vertexStride, sizeof(int));
+
+	fin.read((char*)&vertexBufferSize, sizeof(int));
+	vertexBufferSize *= static_cast<size_t>(vertexStride);
+
+	pVertData = reinterpret_cast<UINT8*>(malloc(vertexBufferSize));
+	fin.read((char*)pVertData, vertexBufferSize);
+
+	fin.read((char*)&indexBufferSize, sizeof(int));
+	m_indexNum = indexBufferSize;
+	indexBufferSize *= sizeof(int);
+
+	pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
+	fin.read((char*)pIndtData, indexBufferSize);
 
 	//Create the vertex buffer.
-	const UINT vertexBufferSize = sizeof(float) * 54 * 7;
-	const UINT vertexStride = sizeof(float) * 7;
 	{
 		ThrowIfFailed(m_device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -264,10 +283,6 @@ void D3D12DrawMesh::LoadAssets()
 			nullptr,
 			IID_PPV_ARGS(&m_vertexBuffer)));
 
-		// Note: using upload heaps to transfer static data like vert buffers is not 
-		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-		// over. Please read up on Default Heap usage. An upload heap is used here for 
-		// code simplicity and because there are very few verts to actually transfer.
 		ThrowIfFailed(m_device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
@@ -281,11 +296,10 @@ void D3D12DrawMesh::LoadAssets()
 		// Copy data to the intermediate upload heap and then schedule a copy 
 		// from the upload heap to the vertex buffer.
 		D3D12_SUBRESOURCE_DATA vertexData = {};
-		vertexData.pData = pMeshData;
+		vertexData.pData = pVertData;
 		vertexData.RowPitch = vertexBufferSize;
 		vertexData.SlicePitch = vertexData.RowPitch;
 
-		//commandList->CopyBufferRegion(m_vertexBuffer.Get(), 0, vertexBufferUploadHeap.Get(), 0, vertexBufferSize);
 		UpdateSubresources<1>(commandList.Get(), m_vertexBuffer.Get(), vertexBufferUploadHeap.Get(), 0, 0, 1, &vertexData);
 		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
@@ -296,7 +310,7 @@ void D3D12DrawMesh::LoadAssets()
 	}
 
 	// Create the index buffer.
-	const UINT indexBufferSize = sizeof(int) * 144;
+	//const UINT indexBufferSize = sizeof(int) * 144;
 	{
 		ThrowIfFailed(m_device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -319,11 +333,10 @@ void D3D12DrawMesh::LoadAssets()
 		// Copy data to the intermediate upload heap and then schedule a copy 
 		// from the upload heap to the index buffer.
 		D3D12_SUBRESOURCE_DATA indexData = {};
-		indexData.pData = pMeshData + vertexBufferSize;
+		indexData.pData = pIndtData;
 		indexData.RowPitch = indexBufferSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
-		//commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, indexBufferUploadHeap.Get(), 0, indexBufferSize);
 		UpdateSubresources<1>(commandList.Get(), m_indexBuffer.Get(), indexBufferUploadHeap.Get(), 0, 0, 1, &indexData);
 		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
@@ -332,6 +345,9 @@ void D3D12DrawMesh::LoadAssets()
 		m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 		m_indexBufferView.SizeInBytes = indexBufferSize;
 	}
+
+	free(pVertData);
+	free(pIndtData);
 
 	// Create the constant buffer.
 	{
@@ -428,6 +444,16 @@ void D3D12DrawMesh::OnDestroy()
 	CloseHandle(m_fenceEvent);
 }
 
+void D3D12DrawMesh::OnKeyDown(UINT8 key)
+{
+	m_camera.OnKeyDown(key);
+}
+
+void D3D12DrawMesh::OnKeyUp(UINT8 key)
+{
+	m_camera.OnKeyUp(key);
+}
+
 // Fill the command list with all the render commands and dependent state.
 void D3D12DrawMesh::PopulateCommandList()
 {
@@ -463,7 +489,7 @@ void D3D12DrawMesh::PopulateCommandList()
 	m_commandList->IASetIndexBuffer(&m_indexBufferView);
 	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
-	m_commandList->DrawIndexedInstanced(144, 1, 0, 0, 0);
+	m_commandList->DrawIndexedInstanced(m_indexNum, 1, 0, 0, 0);
 
 	// Indicate that the back buffer will now be used to present.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

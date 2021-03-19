@@ -34,6 +34,8 @@ public:
     virtual void OnUpdate();
     virtual void OnRender();
     virtual void OnDestroy();
+	virtual void OnKeyDown(UINT8 key);
+	virtual void OnKeyUp(UINT8 key);
 
 private:
     static const UINT FrameCount = 2;
@@ -71,6 +73,7 @@ private:
 	UINT8* m_pCbvDataBegin;
 	StepTimer m_timer;
 	SimpleCamera m_camera;
+    UINT m_indexNum;
 
     // Synchronization objects.
     UINT m_frameIndex;
