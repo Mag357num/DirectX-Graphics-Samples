@@ -231,20 +231,28 @@ void D3D12DrawMesh::LoadAssets()
 		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 	}
 
+	// Single-use command allocator and command list for creating resources.
+	ComPtr<ID3D12CommandAllocator> commandAllocator;
+	ComPtr<ID3D12GraphicsCommandList> commandList;
+
+	ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)));
+	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList)));
+
 	// Create the command list.
 	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 
-	//// Command lists are created in the recording state, but there is nothing
-	//// to record yet. The main loop expects it to be closed, so close it now.
-	//ThrowIfFailed(m_commandList->Close());
+	// Command lists are created in the recording state, but there is nothing
+	// to record yet. The main loop expects it to be closed, so close it now.
+	ThrowIfFailed(m_commandList->Close());
 
 	//read binary
 	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
-	float pMeshData[522];
-	fin.read((char*)&pMeshData, sizeof(float) * 522);
+	float meshDataArray[522];
+	fin.read((char*)meshDataArray, sizeof(float) * 522);
 	fin.close();
+	UINT8* pMeshData = reinterpret_cast<UINT8*>(meshDataArray);
 
-	// Create the vertex buffer.
+	//Create the vertex buffer.
 	const UINT vertexBufferSize = sizeof(float) * 54 * 7;
 	const UINT vertexStride = sizeof(float) * 7;
 	{
@@ -275,8 +283,9 @@ void D3D12DrawMesh::LoadAssets()
 		vertexData.RowPitch = vertexBufferSize;
 		vertexData.SlicePitch = vertexData.RowPitch;
 
-		UpdateSubresources<1>(m_commandList.Get(), m_vertexBuffer.Get(), vertexBufferUploadHeap.Get(), 0, 0, 1, &vertexData);
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+		//commandList->CopyBufferRegion(m_vertexBuffer.Get(), 0, vertexBufferUploadHeap.Get(), 0, vertexBufferSize);
+		UpdateSubresources<1>(commandList.Get(), m_vertexBuffer.Get(), vertexBufferUploadHeap.Get(), 0, 0, 1, &vertexData);
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 		// Initialize the vertex buffer view.
 		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
@@ -312,8 +321,9 @@ void D3D12DrawMesh::LoadAssets()
 		indexData.RowPitch = indexBufferSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
-		UpdateSubresources<1>(m_commandList.Get(), m_indexBuffer.Get(), indexBufferUploadHeap.Get(), 0, 0, 1, &indexData);
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+		//commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, indexBufferUploadHeap.Get(), 0, indexBufferSize);
+		UpdateSubresources<1>(commandList.Get(), m_indexBuffer.Get(), indexBufferUploadHeap.Get(), 0, 0, 1, &indexData);
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 		// Describe the index buffer view.
 		m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
@@ -346,9 +356,10 @@ void D3D12DrawMesh::LoadAssets()
 		memcpy(m_pCbvDataBegin, &m_constantBufferData, sizeof(m_constantBufferData));
 	}
 
-	// Close the command list and execute it to begin the initial GPU setup.
-	ThrowIfFailed(m_commandList->Close());
-	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+	// Close the resource creation command list and execute it to begin the vertex buffer copy into
+	// the default heap.
+	ThrowIfFailed(commandList->Close());
+	ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
@@ -428,11 +439,7 @@ void D3D12DrawMesh::PopulateCommandList()
 
 	// Set necessary state.
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	
-	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
-	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -445,9 +452,13 @@ void D3D12DrawMesh::PopulateCommandList()
 	// Record commands.
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	
+	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->DrawInstanced(3, 1, 0, 0);
+	m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+	m_commandList->DrawInstanced(144, 1, 0, 0);
 
 	// Indicate that the back buffer will now be used to present.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
