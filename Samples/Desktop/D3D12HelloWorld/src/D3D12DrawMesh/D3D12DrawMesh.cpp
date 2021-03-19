@@ -27,7 +27,7 @@ D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
 
 void D3D12DrawMesh::OnInit()
 {
-	m_camera.Init({ 8, 8, 100 });
+	m_camera.Init({ 8, 8, 300 });
 
 	LoadPipeline();
 	LoadAssets();
@@ -276,6 +276,8 @@ void D3D12DrawMesh::LoadAssets()
 			nullptr,
 			IID_PPV_ARGS(&vertexBufferUploadHeap)));
 
+		NAME_D3D12_OBJECT(m_vertexBuffer);
+
 		// Copy data to the intermediate upload heap and then schedule a copy 
 		// from the upload heap to the vertex buffer.
 		D3D12_SUBRESOURCE_DATA vertexData = {};
@@ -342,6 +344,8 @@ void D3D12DrawMesh::LoadAssets()
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(&m_constantBuffer)));
+
+		NAME_D3D12_OBJECT(m_constantBuffer);
 
 		// Describe and create a constant buffer view.
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
@@ -456,9 +460,10 @@ void D3D12DrawMesh::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_commandList->IASetIndexBuffer(&m_indexBufferView);
 	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	m_commandList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
-	m_commandList->DrawInstanced(144, 1, 0, 0);
+	m_commandList->DrawIndexedInstanced(144, 1, 0, 0, 0);
 
 	// Indicate that the back buffer will now be used to present.
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

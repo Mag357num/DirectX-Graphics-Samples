@@ -1,2 +1,7 @@
 ﻿  D3D12DrawMesh.cpp
+Win32Application.obj : warning LNK4099: PDB '' was not found with 'Win32Application.obj' or at ''; linking object as if no debug info
+stdafx.obj : warning LNK4099: PDB 'vc142.pdb' was not found with 'stdafx.obj' or at 'F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\vc142.pdb'; linking object as if no debug info
+SimpleCamera.obj : warning LNK4099: PDB 'vc142.pdb' was not found with 'SimpleCamera.obj' or at 'F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\vc142.pdb'; linking object as if no debug info
+Main.obj : warning LNK4099: PDB 'vc142.pdb' was not found with 'Main.obj' or at 'F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\vc142.pdb'; linking object as if no debug info
+DXSample.obj : warning LNK4099: PDB 'vc142.pdb' was not found with 'DXSample.obj' or at 'F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\vc142.pdb'; linking object as if no debug info
   D3D12DrawMesh.vcxproj -> F:\WorkPlace\Dx12Sample\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\x64\Debug\D3D12DrawMesh.exe
