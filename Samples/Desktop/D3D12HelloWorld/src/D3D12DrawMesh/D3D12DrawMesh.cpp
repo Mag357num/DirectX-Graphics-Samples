@@ -27,7 +27,26 @@ D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
 
 void D3D12DrawMesh::OnInit()
 {
-	m_camera.Init({ 8, 8, 300 });
+	//read cam binary
+	float location[3];
+	float target[3];
+	float fov;
+	float aspect;
+	float rotator[4];
+
+	std::ifstream fin("SingleCameraBinary_.dat", std::ios::binary);
+
+	if (!fin.is_open())
+	{
+		throw std::exception("open file faild.");
+	}
+	fin.read((char*)location, sizeof(float) * 3);
+	fin.read((char*)target, sizeof(float) * 3);
+	fin.read((char*)&fov, sizeof(float));
+	fin.read((char*)&aspect, sizeof(float));
+	fin.read((char*)rotator, sizeof(float) * 4);
+	m_camera.Init({ location[0], location[1], location[2] }); //TODO: use fov, aspect etc
+	fin.close();
 
 	LoadPipeline();
 	LoadAssets();
@@ -157,7 +176,7 @@ void D3D12DrawMesh::LoadAssets()
 
 	// Create a root signature consisting of a descriptor table with a single CBV.
 	{
-				D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
 
 		// This is the highest version the sample supports. If CheckFeatureSupport succeeds, the HighestVersion returned will not be greater than this.
 		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
@@ -248,9 +267,9 @@ void D3D12DrawMesh::LoadAssets()
 	// to record yet. The main loop expects it to be closed, so close it now.
 	ThrowIfFailed(m_commandList->Close());
 
-	//read binary
-	UINT8* pVertData;
-	UINT8* pIndtData;
+	//read binary //TODO: encapsulate this code
+	UINT8* pVertData = nullptr;
+	UINT8* pIndtData = nullptr;
 	int vertexBufferSize;
 	int vertexStride;
 	int indexBufferSize;
@@ -262,47 +281,30 @@ void D3D12DrawMesh::LoadAssets()
 	}
 
 	fin.read((char*)&vertexStride, sizeof(int));
-
 	fin.read((char*)&vertexBufferSize, sizeof(int));
 	vertexBufferSize *= static_cast<size_t>(vertexStride);
 
-	pVertData = reinterpret_cast<UINT8*>(malloc(vertexBufferSize));
-	fin.read((char*)pVertData, vertexBufferSize);
+	if (vertexBufferSize > 0)
+	{
+		pVertData = reinterpret_cast<UINT8*>(malloc(vertexBufferSize));
+		fin.read((char*)pVertData, vertexBufferSize);
+	}
+	else
+	{
+		throw std::exception();
+	}
 
 	fin.read((char*)&indexBufferSize, sizeof(int));
 	m_indexNum = indexBufferSize;
 	indexBufferSize *= sizeof(int);
 
-	pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
-	fin.read((char*)pIndtData, indexBufferSize);
+	if (indexBufferSize > 0)
+	{
+		pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
+		fin.read((char*)pIndtData, indexBufferSize);
+	}
 
 	fin.close();
-
-	//TEST
-	std::ifstream fin2("StaticMeshBinary_.dat", std::ios::binary);
-	int stride0;
-	fin2.read((char*)&stride0, sizeof(int));
-	int vlength;
-	fin2.read((char*)&vlength, sizeof(int));
-	for (int i = 0; i < 54; i++)
-	{
-		float pos[3];
-		float nor[3];
-		float uv0[2];
-		float uv1[2];
-		float col[4];
-		fin2.read((char*)pos, sizeof(float) * 3);
-		fin2.read((char*)nor, sizeof(float) * 3);
-		fin2.read((char*)uv0, sizeof(float) * 2);
-		fin2.read((char*)uv1, sizeof(float) * 2);
-		fin2.read((char*)col, sizeof(float) * 4);
-		int a = 10;
-	}
-	int ilength;
-	fin2.read((char*)&ilength, sizeof(int));
-	int ind[144];
-	fin2.read((char*)ind, sizeof(int) * 144);
-	fin2.close();
 
 	//Create the vertex buffer.
 	{
