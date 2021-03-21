@@ -28,28 +28,69 @@ D3D12DrawMesh::D3D12DrawMesh(UINT width, UINT height, std::wstring name) :
 void D3D12DrawMesh::OnInit()
 {
 	//read cam binary
-	float location[3];
-	float target[3];
+	XMFLOAT3 location;
+	XMFLOAT3 target;
 	float fov;
 	float aspect;
-	float rotator[4];
+	XMFLOAT4 rotator;
+	ReadCameraBinary("SingleCameraBinary_.dat", location, target, fov, aspect, rotator);
 
-	std::ifstream fin("SingleCameraBinary_.dat", std::ios::binary);
+	LoadPipeline();
+	LoadAssets();
+}
+
+void D3D12DrawMesh::ReadCameraBinary(const string& binFileName, XMFLOAT3& location, XMFLOAT3& target, float& fov, float& aspect, XMFLOAT4& rotator)
+{
+	std::ifstream fin(binFileName, std::ios::binary);
 
 	if (!fin.is_open())
 	{
 		throw std::exception("open file faild.");
 	}
-	fin.read((char*)location, sizeof(float) * 3);
-	fin.read((char*)target, sizeof(float) * 3);
+	fin.read((char*)&location, sizeof(float) * 3);
+	fin.read((char*)&target, sizeof(float) * 3);
 	fin.read((char*)&fov, sizeof(float));
 	fin.read((char*)&aspect, sizeof(float));
-	fin.read((char*)rotator, sizeof(float) * 4);
-	m_camera.Init({ location[0], location[1], location[2] }); //TODO: use fov, aspect etc
+	fin.read((char*)&rotator, sizeof(float) * 4);
+	m_camera.Init({ location.x, location.y, location.z }); //TODO: use fov, aspect etc
 	fin.close();
+}
 
-	LoadPipeline();
-	LoadAssets();
+void D3D12DrawMesh::ReadStaticMeshBinary(const string& binFileName, UINT8*& pVertData, UINT8*& pIndtData, int& vertexBufferSize, int& vertexStride, int& indexBufferSize)
+{
+	std::ifstream fin(binFileName, std::ios::binary);
+
+	if (!fin.is_open())
+	{
+		throw std::exception("open file faild.");
+	}
+
+	fin.read((char*)&vertexStride, sizeof(int));
+
+	fin.read((char*)&vertexBufferSize, sizeof(int));
+	vertexBufferSize *= static_cast<size_t>(vertexStride);
+
+	if (vertexBufferSize > 0)
+	{
+		pVertData = reinterpret_cast<UINT8*>(malloc(vertexBufferSize));
+		fin.read((char*)pVertData, vertexBufferSize);
+	}
+	else
+	{
+		throw std::exception();
+	}
+
+	fin.read((char*)&indexBufferSize, sizeof(int));
+	m_indexNum = indexBufferSize;
+	indexBufferSize *= sizeof(int);
+
+	if (indexBufferSize > 0)
+	{
+		pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
+		fin.read((char*)pIndtData, indexBufferSize);
+	}
+
+	fin.close();
 }
 
 // Load the rendering pipeline dependencies.
@@ -267,44 +308,13 @@ void D3D12DrawMesh::LoadAssets()
 	// to record yet. The main loop expects it to be closed, so close it now.
 	ThrowIfFailed(m_commandList->Close());
 
-	//read binary //TODO: encapsulate this code
+	//read binary
 	UINT8* pVertData = nullptr;
 	UINT8* pIndtData = nullptr;
 	int vertexBufferSize;
 	int vertexStride;
 	int indexBufferSize;
-	std::ifstream fin("StaticMeshBinary_.dat", std::ios::binary);
-
-	if (!fin.is_open())
-	{
-		throw std::exception("open file faild.");
-	}
-
-	fin.read((char*)&vertexStride, sizeof(int));
-	fin.read((char*)&vertexBufferSize, sizeof(int));
-	vertexBufferSize *= static_cast<size_t>(vertexStride);
-
-	if (vertexBufferSize > 0)
-	{
-		pVertData = reinterpret_cast<UINT8*>(malloc(vertexBufferSize));
-		fin.read((char*)pVertData, vertexBufferSize);
-	}
-	else
-	{
-		throw std::exception();
-	}
-
-	fin.read((char*)&indexBufferSize, sizeof(int));
-	m_indexNum = indexBufferSize;
-	indexBufferSize *= sizeof(int);
-
-	if (indexBufferSize > 0)
-	{
-		pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
-		fin.read((char*)pIndtData, indexBufferSize);
-	}
-
-	fin.close();
+	ReadStaticMeshBinary("StaticMeshBinary_.dat", pVertData, pIndtData, vertexBufferSize, vertexStride, indexBufferSize);
 
 	//Create the vertex buffer.
 	{
