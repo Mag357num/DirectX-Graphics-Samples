@@ -15,18 +15,27 @@ cbuffer SceneConstantBuffer : register(b0)
     float4 padding[48];
 };
 
+struct VSInput
+{
+    float3 position    : POSITION;
+    float3 normal    : NORMAL;
+    float2 uv0        : TEXCOORD0;
+    float2 uv1        : TEXCOORD1;
+    float4 color    : COLOR;
+};
+
 struct PSInput
 {
     float4 position : SV_POSITION;
     float4 color : COLOR;
 };
 
-PSInput VSMain(float3 position : POSITION, float4 color : COLOR)
+PSInput VSMain(VSInput input)
 {
     PSInput result;
 
-    result.position = mul(float4(position, 1.0f), worldViewProj);
-    result.color = color;
+    result.position = mul(float4(input.position, 1.0f), worldViewProj);
+    result.color = input.color;
 
     return result;
 }

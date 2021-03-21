@@ -36,7 +36,7 @@ private:
         bool w;
         bool a;
         bool s;
-        bool d;
+		bool d;
 
         bool left;
         bool right;

@@ -209,7 +209,10 @@ void D3D12DrawMesh::LoadAssets()
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 40, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 		};
 
 		// Describe and create the graphics pipeline state object (PSO).
@@ -272,6 +275,34 @@ void D3D12DrawMesh::LoadAssets()
 
 	pIndtData = reinterpret_cast<UINT8*>(malloc(indexBufferSize));
 	fin.read((char*)pIndtData, indexBufferSize);
+
+	fin.close();
+
+	//TEST
+	std::ifstream fin2("StaticMeshBinary_.dat", std::ios::binary);
+	int stride0;
+	fin2.read((char*)&stride0, sizeof(int));
+	int vlength;
+	fin2.read((char*)&vlength, sizeof(int));
+	for (int i = 0; i < 54; i++)
+	{
+		float pos[3];
+		float nor[3];
+		float uv0[2];
+		float uv1[2];
+		float col[4];
+		fin2.read((char*)pos, sizeof(float) * 3);
+		fin2.read((char*)nor, sizeof(float) * 3);
+		fin2.read((char*)uv0, sizeof(float) * 2);
+		fin2.read((char*)uv1, sizeof(float) * 2);
+		fin2.read((char*)col, sizeof(float) * 4);
+		int a = 10;
+	}
+	int ilength;
+	fin2.read((char*)&ilength, sizeof(int));
+	int ind[144];
+	fin2.read((char*)ind, sizeof(int) * 144);
+	fin2.close();
 
 	//Create the vertex buffer.
 	{
