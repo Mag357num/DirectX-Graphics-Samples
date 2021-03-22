@@ -66,6 +66,8 @@ private:
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	UINT m_rtvDescriptorSize;
 	UINT m_cbSrvDescriptorSize;
+	ComPtr<ID3D12Resource> m_depthStencil;
+	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 
 	// App resources.
 	ComPtr<ID3D12Resource> m_vertexBuffer;
